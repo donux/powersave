@@ -1,0 +1,17 @@
+A script to enable laptop power saving features for #! & Debian GNU+linux.
+Generally speaking, this script should automatically switch powertop's
+"Tunables" which proved to make significant impact in power consumption
+while running on battery.
+
+http://crunchbanglinux.org/forums/topic/11954
+Script originally created by hardran3 at:
+
+Adjusted for Debian Wheezy on Lenovo T410 by Donné Brok / info@donux.nl
+
+To make this script run each time laptop's power adapter is plugged in/out:
+cp powersave /etc/pm/power.d/
+chmod +x /etc/pm/power.d/powersave
+
+To run script manually:
+./powersave true|false
+
