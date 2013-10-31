@@ -1,0 +1,115 @@
+#!/bin/sh
+
+#############################################################################
+#
+# A script to enable laptop power saving features for #! & Debian GNU+linux.
+# Generally speaking, this script should automatically switch powertop's
+# "Tunables" which proved to make significant impact in power consumption
+# while running on battery.
+#
+# http://crunchbanglinux.org/forums/topic/11954
+# Script originally created by hardran3 at:
+#
+# Adjusted for Debian Wheezy on Lenovo T410 by Donné Brok / info@donux.nl
+#
+# To make this script run each time laptop's power adapter is plugged in/out:
+# cp powersave /etc/pm/power.d/
+# chmod +x /etc/pm/power.d/powersave
+#
+# To run script manually:
+# ./powersave true|false
+#
+#############################################################################
+
+# List of modules to unload, space seperated. Edit depending on your hardware and preferences.
+modlist="uvcvideo"
+# Bus list for runtime pm. Probably shouldn't touch this.
+buslist="pci i2c"
+
+case "$1" in
+    true) # Enable power saving settings on battery
+    	# bus 
+	  for bus in $buslist; do
+	    for i in /sys/bus/$bus/devices/*/power/control; do echo auto > $i; done
+	  done
+	# usb autosuspend
+	  for i in /sys/bus/usb/devices/*/power/autosuspend; do echo 180 > $i; done
+	  for i in /sys/bus/usb/devices/*/power/control; do echo auto > $i; done
+	# nmi_watchdog & watchdog
+      	  echo 0 > /proc/sys/kernel/nmi_watchdog
+      	  echo 0 > /proc/sys/kernel/watchdog
+	# cpu
+	  for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo powersave > $i; done
+	  #cpufreq-set -r -g powersave
+	# aspm
+	  echo powersave > /sys/module/pcie_aspm/parameters/policy
+	# kernel write mode
+	  echo 5 > /proc/sys/vm/laptop_mode
+	  echo 90 > /proc/sys/vm/dirty_ratio
+	  echo 1 > /proc/sys/vm/dirty_background_ratio
+	  echo 60000 > /proc/sys/vm/dirty_expire_centisecs
+	  echo 60000 > /proc/sys/vm/dirty_writeback_centisecs
+	# disk powersave
+	  hdparm -q -S 60 -B 254 -a 2048 /dev/sda >/dev/null
+	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo min_power > $i; done
+	# sound card powersave
+	  echo 1 > /sys/module/snd_hda_intel/parameters/power_save
+	  echo Y > /sys/module/snd_hda_intel/parameters/power_save_controller
+	# wlan0 powersave
+	  iw dev wlan0 set power_save on >/dev/null
+	# screen powersave
+	  for i in /sys/class/backlight/acpi_video*/brightness; do echo 10 > $i; done
+	  xset +dpms
+	  xset dpms 0 0 120
+	  # echo 10 > /sys/devices/pci0000:00/0000:00:02.0/backlight/acpi_video0/brightness
+	# Disable hardware modules to save power
+          for mod in $modlist; do
+            grep $mod /proc/modules >/dev/null || continue
+            modprobe -r $mod 2>/dev/null
+          done
+	;;
+
+	false) # Return to default on AC power
+    	# bus
+	  for bus in $buslist; do
+	    for i in /sys/bus/$bus/devices/*/power/control; do echo on > $i; done
+	  done
+	# usb autosuspend
+	  for i in /sys/bus/usb/devices/*/power/autosuspend; do echo 600 > $i; done
+	  for i in /sys/bus/usb/devices/*/power/control; do echo auto > $i; done
+	# nmi_watchdog & watchdog
+      	  echo 1 > /proc/sys/kernel/nmi_watchdog
+     	  echo 1 > /proc/sys/kernel/watchdog
+	# cpu
+	  for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo ondemand > $i; done
+	  #cpufreq-set -r -g ondemand
+	# aspm
+	  echo default > /sys/module/pcie_aspm/parameters/policy
+	# kernel write mode
+	  echo 0 > /proc/sys/vm/laptop_mode
+	  echo 30 > /proc/sys/vm/dirty_ratio
+	  echo 30 > /proc/sys/vm/dirty_background_ratio
+	  echo 600 > /proc/sys/vm/dirty_expire_centisecs
+	  echo 600 > /proc/sys/vm/dirty_writeback_centisecs
+	# disk powersave
+	  hdparm -q -S 120 -B 254 -a 2048 /dev/sda >/dev/null
+	  for i in /sys/class/scsi_host/host*/link_power_management_policy; do echo max_performance > $i; done
+	# sound card powersave
+	  echo 0 > /sys/module/snd_hda_intel/parameters/power_save
+	  echo N > /sys/module/snd_hda_intel/parameters/power_save_controller
+	# wlan0 powersave
+	  iw dev wlan0 set power_save off >/dev/null
+	# screen powersave
+	  for i in /sys/class/backlight/acpi_video*/brightness; do echo 15 > $i; done
+	  xset -dpms
+	  # echo 15 > /sys/devices/pci0000:00/0000:00:02.0/backlight/acpi_video0/brightness
+	# Disable hardware modules to save power
+	  for mod in $modlist; do
+            if ! lsmod | grep $mod; then
+	      modprobe $mod 2>/dev/null
+	    fi
+          done
+	;;
+esac
+
+exit 0
