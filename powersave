@@ -7,8 +7,8 @@
 # "Tunables" which proved to make significant impact in power consumption
 # while running on battery.
 #
-# http://crunchbanglinux.org/forums/topic/11954
 # Script originally created by hardran3 at:
+# http://crunchbanglinux.org/forums/topic/11954
 #
 # Adjusted for Debian Wheezy on Lenovo T410 by Donné Brok / info@donux.nl
 #
